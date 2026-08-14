@@ -1,0 +1,5 @@
+# mediapipe==1.0.x tiene un bug conocido en macOS: crashea al cargar HandLandmarker
+# ("DrishtiMetalHelper ... Service is unavailable"). 0.10.21 es la última versión
+# estable verificada que funciona en macOS (Apple Silicon) sin ese crash.
+mediapipe==0.10.21
+pytest
