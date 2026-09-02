@@ -4,8 +4,14 @@ invariantes de Hu, compartido por el generador de descriptores
 y el clasificador.
 """
 
+from pathlib import Path
+
 import cv2
 import numpy as np
+
+# Carpeta que contiene src/. Las rutas al dataset y al modelo se arman a partir
+# de acá para que los scripts corran igual desde cualquier directorio.
+RAIZ_PROYECTO = Path(__file__).resolve().parent.parent
 
 ETIQUETAS = {
     1: "luna",
