@@ -92,7 +92,15 @@ Trackbars disponibles:
 2. Binarización con umbral fijo ajustable por trackbar.
 3. Apertura + cierre morfológico para eliminar ruido y rellenar huecos.
 4. Búsqueda de todos los contornos externos.
-5. Descarte de contornos espurios por área mínima (`AREA_MINIMA = 500`).
+5. Descarte de contornos espurios, por dos criterios:
+   - área mínima (`AREA_MINIMA = 500`);
+   - contornos cortados por el borde del cuadro.
+
+El filtro de borde importa más de lo que parece. Un contorno cortado por el
+marco no describe al objeto sino a su intersección con la imagen, así que sus
+invariantes de Hu no corresponden a ninguna forma real. Es además el caso
+típico de una persona entrando en escena: el cuerpo siempre sale del cuadro por
+algún lado.
 
 ### Descriptor
 
@@ -119,15 +127,24 @@ componentes) y se mide cuán lejos está de la muestra de entrenamiento más
 parecida de la clase predicha. Si esa distancia supera el umbral, la forma es
 desconocida.
 
-El umbral por defecto sale del percentil 95 de las distancias entre muestras de
+El umbral por defecto sale de un percentil de las distancias entre muestras de
 una misma clase, calculado en el entrenamiento, y se puede reajustar en vivo con
-la trackbar `Distancia x10`.
+la trackbar `Distancia x10`. El percentil elegido es 90; el compromiso, medido
+sobre este dataset y contra siluetas que el modelo nunca vio, está en la sección
+de resultados.
 
 ## Resultados
 
 Con 91 muestras (35 luna, 27 cuadrado, 29 estrella) y 25% reservado para prueba:
 
 ```
+Comparación de clasificadores (validación cruzada de 5 particiones,
+promediada sobre 5 semillas):
+  DecisionTree     0.956 +/- 0.000
+  RandomForest     0.958 +/- 0.005
+  KNeighbors(3)    0.800 +/- 0.019
+  SVC(rbf)         0.906 +/- 0.015
+
 Exactitud sobre conjunto de prueba: 91.30%
 
 Matriz de confusión
@@ -136,12 +153,85 @@ Matriz de confusión
  [0 7 0]
  [1 0 6]]
 
-Umbral de distancia (percentil 95 intra-clase): 1.686
+Umbral de distancia (percentil 90 intra-clase): 1.059
 ```
 
+El árbol de decisión y el random forest empatan; los otros dos quedan atrás. Se
+guarda el árbol, que es además el que sugiere la consigna.
+
 Las confusiones que quedan son entre luna y estrella. El cuadrado se separa sin
-error, que es lo esperable: es la forma con los invariantes de Hu más distintos
-de las otras dos.
+error: es la forma con los invariantes de Hu más distintos de las otras dos.
+
+### Elección del umbral de rechazo
+
+Medido contra siluetas que el modelo nunca vio (manos con distinta cantidad de
+dedos y apertura, torsos con brazos, y formas orgánicas al azar, cada una
+también en versión cortada por el borde):
+
+| Percentil | Reconoce bien | Falso "desconocido" | Intrusos aceptados |
+|-----------|---------------|---------------------|--------------------|
+| 99 | 91.2% | 3.3% | 59.7% |
+| 95 | 86.8% | 7.7% | 40.0% |
+| **90** | **83.5%** | **12.1%** | **19.2%** |
+
+Se elige 90: el problema a evitar es aceptar como figura algo que no lo es.
+
+### Efecto del filtro de borde
+
+| Intruso | Contornos | Descartados por borde | Aceptados |
+|---------|-----------|------------------------|-----------|
+| Mano | 200 | 0 | 46.5% |
+| Torso | 400 | 50 | 28.0% |
+| Forma orgánica | 200 | 0 | 41.0% |
+| Cortado por el borde | 593 | 444 | 2.5% |
+| **Total** | **1393** | **494** | **21.7%** |
+
+Antes de estos ajustes el total aceptado era 43.0%.
+
+### Límite conocido
+
+Queda un 21.7% de siluetas ajenas aceptadas como figura conocida, casi todas
+como "estrella". No es un defecto de implementación sino del descriptor, y
+conviene tenerlo presente al mostrar el sistema.
+
+Las tres figuras son simétricas o casi. Para el cuadrado y la estrella, los
+invariantes de Hu de orden 2 en adelante valen **teóricamente cero**: lo que se
+mide en ellos es el piso de ruido numérico del cálculo de momentos, no la
+forma. Comparando una figura de referencia limpia contra las capturas de webcam
+se ve directo:
+
+| | figura de referencia | capturas de webcam |
+|---|---|---|
+| cuadrado `hu2,hu3,hu4` | 11.3, 9.72, 10.66 | 4.87, 4.95, 7.07 |
+| estrella `hu2,hu3,hu4` | 6.65, 6.94, 7.84 | 4.03, 4.87, 4.60 |
+| luna `hu2,hu3,hu4` | 0.93, 1.18, 1.96 | 0.81, 1.30, 1.84 |
+
+La luna coincide, porque es asimétrica y sus invariantes son genuinamente
+distintos de cero. El cuadrado y la estrella no coinciden: su valor depende del
+ruido de captura. Separando la señal del ruido por clase (dispersión entre
+clases dividida dispersión dentro de cada clase), `hu1..hu4` dan entre 1.7 y
+2.6, y `hu5..hu7` dan 0.2.
+
+El resultado es que en el espacio de Hu una mano cae encima de la estrella:
+
+```
+conocidos:  luna 0.24-0.35   estrella 0.66-0.68   cuadrado 0.77-0.78
+intrusos:                    mano 0.67-0.74       forma orgánica 0.73-0.79
+```
+
+Tres caminos para mejorarlo, todos dentro de la consigna:
+
+1. **Recortar una región de interés.** La consigna la contempla como parte del
+   ambiente controlado: si sólo se procesa el rectángulo donde se apoyan las
+   figuras, una persona que pasa por detrás no entra en el proceso. Es la
+   solución más efectiva para este caso puntual.
+2. **Más muestras y más variadas**, que es lo que pide la consigna. Las 91
+   actuales son ráfagas del mismo objeto quieto: los 27 cuadrados tienen `hu1`
+   entre 0.7767 y 0.7795. Capturar cada figura en distintas rotaciones,
+   distancias y posiciones ensancha lo que el modelo reconoce sin aflojar el
+   umbral.
+3. **Bajar el umbral con la trackbar** durante la demostración, aceptando más
+   falsos "desconocido" a cambio de menos falsos aciertos.
 
 ## Decisiones de diseño
 

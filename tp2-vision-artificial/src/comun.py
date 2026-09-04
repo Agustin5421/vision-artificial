@@ -62,9 +62,33 @@ def encontrar_contornos(binaria):
     return contornos
 
 
-def filtrar_contornos(contornos, area_minima=AREA_MINIMA):
-    """Paso 5 (opcional): descarta contornos espurios por área mínima."""
-    return [c for c in contornos if cv2.contourArea(c) >= area_minima]
+def toca_el_borde(contorno, forma_imagen, margen=2):
+    """
+    ¿El contorno llega al borde del cuadro?
+
+    Un contorno cortado por el marco no describe al objeto sino a su
+    intersección con la imagen, así que sus invariantes de Hu no
+    corresponden a ninguna forma real. Es además el caso típico de una
+    persona entrando en escena: el cuerpo siempre sale del cuadro por
+    algún lado.
+    """
+    alto, ancho = forma_imagen[:2]
+    x, y, w, h = cv2.boundingRect(contorno)
+    return (x <= margen or y <= margen
+            or x + w >= ancho - margen or y + h >= alto - margen)
+
+
+def filtrar_contornos(contornos, forma_imagen, area_minima=AREA_MINIMA):
+    """
+    Paso 5 (opcional): descarta contornos espurios.
+
+    Dos criterios: área mínima (contornos demasiado chicos para ser un
+    objeto) y contornos cortados por el borde del cuadro (ver
+    toca_el_borde).
+    """
+    return [c for c in contornos
+            if cv2.contourArea(c) >= area_minima
+            and not toca_el_borde(c, forma_imagen)]
 
 
 def calcular_descriptor(contorno):

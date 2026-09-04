@@ -86,7 +86,7 @@ def main():
         binaria = comun.aplicar_morfologia(binaria, tam_kernel)
 
         contornos = comun.encontrar_contornos(binaria)
-        contornos = comun.filtrar_contornos(contornos)
+        contornos = comun.filtrar_contornos(contornos, binaria.shape)
 
         anotado = frame.copy()
 

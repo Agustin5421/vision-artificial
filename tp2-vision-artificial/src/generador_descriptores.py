@@ -43,7 +43,7 @@ def main():
         binaria = comun.aplicar_morfologia(binaria, tam_kernel)
 
         contornos = comun.encontrar_contornos(binaria)
-        contornos = comun.filtrar_contornos(contornos)
+        contornos = comun.filtrar_contornos(contornos, binaria.shape)
 
         anotado = frame.copy()
         cv2.drawContours(anotado, contornos, -1, (0, 255, 0), 2)

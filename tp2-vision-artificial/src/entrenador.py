@@ -19,7 +19,13 @@ No usa la webcam: opera exclusivamente sobre el dataset.
 import numpy as np
 import pandas as pd
 from sklearn import tree
-from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import (train_test_split, cross_val_score,
+                                     StratifiedKFold)
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 from joblib import dump
 
@@ -29,10 +35,46 @@ RUTA_DATASET = comun.RAIZ_PROYECTO / "dataset" / "dataset.csv"
 RUTA_MODELO = comun.RAIZ_PROYECTO / "modelos" / "modelo.joblib"
 
 # Percentil de las distancias intra-clase que se toma como umbral por
-# defecto: deja pasar a casi todas las muestras genuinas y rechaza lo
-# que cae notoriamente más lejos. Se puede reajustar en vivo con la
-# trackbar de clasificador.py.
-PERCENTIL_UMBRAL = 95
+# defecto. Medido sobre este dataset y contra siluetas que el modelo nunca
+# vio (manos, torsos, formas orgánicas), el compromiso es:
+#
+#   percentil   reconoce bien   falso "desconocido"   intrusos aceptados
+#       99          91.2%              3.3%                 59.7%
+#       95          86.8%              7.7%                 40.0%
+#       90          83.5%             12.1%                 19.2%
+#
+# Se elige 90 porque el problema a evitar es aceptar como figura algo que
+# no lo es. Se puede reajustar en vivo con la trackbar de clasificador.py.
+PERCENTIL_UMBRAL = 90
+
+
+def comparar_clasificadores(X, y):
+    """
+    Compara el árbol de decisión contra las otras opciones habituales,
+    con validación cruzada sobre el dataset completo.
+
+    Es informativo: el modelo que se guarda es siempre el árbol. Sirve
+    para justificar esa elección con números en lugar de por costumbre.
+    """
+    candidatos = {
+        "DecisionTree": lambda: tree.DecisionTreeClassifier(random_state=42),
+        "RandomForest": lambda: RandomForestClassifier(n_estimators=200,
+                                                       random_state=42),
+        "KNeighbors(3)": lambda: make_pipeline(StandardScaler(),
+                                               KNeighborsClassifier(3)),
+        "SVC(rbf)": lambda: make_pipeline(StandardScaler(), SVC(C=10)),
+    }
+    print()
+    print("Comparación de clasificadores (validación cruzada de 5 "
+          "particiones, promediada sobre 5 semillas):")
+    for nombre, fabrica in candidatos.items():
+        exactitudes = [
+            cross_val_score(fabrica(), X, y,
+                            cv=StratifiedKFold(5, shuffle=True, random_state=r)).mean()
+            for r in range(5)
+        ]
+        print(f"  {nombre:16s} {np.mean(exactitudes):.3f} "
+              f"+/- {np.std(exactitudes):.3f}")
 
 
 def normalizar(X, media, desvio):
@@ -76,6 +118,8 @@ def main():
     print(f"Dataset cargado: {len(df)} muestras")
     print("Distribución por etiqueta:")
     print(df["etiqueta"].value_counts().sort_index())
+
+    comparar_clasificadores(X, y)
 
     # --- Separar train/test ---
     X_train, X_test, y_train, y_test = train_test_split(
