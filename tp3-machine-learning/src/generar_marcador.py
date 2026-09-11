@@ -17,7 +17,7 @@ from pathlib import Path
 
 import cv2
 
-from deteccion import DICCIONARIOS, Detector
+from deteccion import DICCIONARIOS
 
 MM_POR_PULGADA = 25.4
 
@@ -45,7 +45,8 @@ def main(argumentos=None):
     lado_px = max(1, int(round(args.lado_mm / MM_POR_PULGADA * args.dpi)))
     borde_px = max(0, int(round(args.borde_mm / MM_POR_PULGADA * args.dpi)))
 
-    diccionario = Detector(args.diccionario).diccionario
+    diccionario = cv2.aruco.getPredefinedDictionary(
+        DICCIONARIOS[args.diccionario])
     if hasattr(cv2.aruco, "generateImageMarker"):
         imagen = cv2.aruco.generateImageMarker(diccionario, args.id, lado_px)
     else:  # OpenCV viejo

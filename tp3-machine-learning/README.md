@@ -100,7 +100,7 @@ declara al sistema con `--lado-mm`: de ese número sale toda la escala métrica.
 ### 2. Localizar
 
 ```
-python src/main.py --camara 0 --lado-mm 100 --diccionario 4x4_50
+python src/main.py --lado-mm 100
 ```
 
 1. Apuntar la cámara al plano, en perspectiva, y dejarla fija.
@@ -115,13 +115,53 @@ python src/main.py --camara 0 --lado-mm 100 --diccionario 4x4_50
 |-----------------|----------|----------|
 | `--camara`      | `0`      | índice de la cámara |
 | `--lado-mm`     | `100`    | lado real del marcador, en mm |
-| `--diccionario` | `4x4_50` | diccionario Aruco (`4x4_50`, `4x4_250`, `5x5_250`, `6x6_250`, `7x7_250`) |
+| `--diccionario` | `auto`   | diccionario Aruco. Por defecto lo busca solo; si se quiere fijar, va el nombre corto (`4x4_50`, `6x6_250`, `apriltag_36h11`, `aruco_original`, ...) |
 | `--ancho-w2d`   | `720`    | ancho de la ventana W2D, en px |
 | `--alto-w2d`    | `720`    | alto de la ventana W2D, en px |
 | `--escala`      | `1.2`    | píxeles por mm en la ventana W2D |
 
 `--escala` define cuánto mundo entra en W2D: con los valores por defecto, la
 ventana cubre ±300 mm alrededor del origen. Bajarla es alejarse.
+
+## El diccionario del marcador
+
+Un marcador sólo se detecta con el diccionario al que pertenece, y los marcadores
+que uno se baja de internet casi nunca son del que uno supone: pueden ser Aruco
+de 4x4, de 6x6, `aruco_original`, o directamente AprilTags.
+
+Por eso el default de `--diccionario` es `auto`: el detector prueba todos los
+diccionarios que trae OpenCV hasta que alguno reconozca un marcador, y a partir
+de ahí se queda con ése. La búsqueda cuesta más de veinte detecciones por cuadro,
+así que sólo se paga hasta encontrarlo; el nombre encontrado aparece abajo en la
+ventana `Cam` y en la terminal, y se le puede pasar después con `--diccionario`
+para saltear la búsqueda.
+
+Un mismo marcador suele dar positivo en varios diccionarios emparentados (4x4_50
+está contenido en 4x4_100, y así). Cualquiera de ellos sirve: la geometría de las
+esquinas, que es lo único que usa la localización, es la misma.
+
+El diccionario fijado no es definitivo: si pasan 15 cuadros seguidos sin detectar
+nada, se vuelve a barrer. Sin eso, un falso positivo sobre un cuadro de ruido
+dejaría al detector fijado en un diccionario equivocado y no encontraría el
+marcador nunca más.
+
+## Si aun así el marcador no se detecta
+
+Cuando en la ventana `Cam` no aparece ningún contorno verde:
+
+```
+python src/diagnostico.py
+```
+
+Prueba todos los diccionarios de OpenCV sobre cada cuadro y reporta todos los que
+reconocen al marcador, no sólo el primero. Dibuja en rojo los candidatos rechazados, los cuadriláteros que encontró
+pero no pudo decodificar, y con eso se distinguen los tres casos:
+
+| Lo que se ve | Qué pasa |
+|--------------|----------|
+| contorno verde | se reconoce: el problema no es el marcador |
+| contorno rojo | ve el cuadrado pero no lee el código: diccionario equivocado, imagen borrosa o movida, marcador muy chico o muy oblicuo |
+| nada | no distingue ni el cuadrado: falta contraste, hay reflejo sobre el papel, o falta margen blanco alrededor |
 
 ## Estructura
 
@@ -132,6 +172,7 @@ src/localizacion.py      pose 2D de un marcador a partir de la homografía image
 src/vista_cenital.py     dibujo de la ventana W2D
 src/main.py              bucle de cámara, ventanas y teclas
 src/generar_marcador.py  utilidad para generar marcadores imprimibles
+src/diagnostico.py       utilidad para averiguar por qué no se detecta un marcador
 tests/                   tests de la localización con una cámara sintética
 ```
 
