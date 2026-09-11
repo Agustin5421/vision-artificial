@@ -4,7 +4,7 @@ Localización homográfica en tiempo real.
 Una cámara fija observa en perspectiva un plano (un escritorio, la
 pantalla de un monitor) sobre el que se desplaza un marcador Aruco. El
 sistema determina y muestra en tiempo real la pose 2D del marcador
-—coordenadas en mm y orientación— en el sistema de referencia métrico
+(coordenadas en mm y orientación) en el sistema de referencia métrico
 registrado.
 
 Ventanas:

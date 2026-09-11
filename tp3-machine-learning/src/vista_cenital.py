@@ -25,10 +25,20 @@ PASO_GRILLA_MM = 50.0
 
 
 def texto(imagen, cadena, posicion, color=COLOR_TEXTO, escala=0.5, grosor=1):
-    """Texto con contorno negro, legible sobre cualquier fondo."""
-    cv2.putText(imagen, cadena, posicion, FUENTE, escala, (0, 0, 0),
+    """
+    Texto con contorno negro, legible sobre cualquier fondo. La posición
+    se corrige para que la etiqueta no quede cortada por el borde de la
+    ventana, cosa que pasa apenas el marcador se acerca a un extremo.
+    """
+    alto_imagen, ancho_imagen = imagen.shape[:2]
+    (ancho_texto, alto_texto), _ = cv2.getTextSize(cadena, FUENTE, escala,
+                                                   grosor + 2)
+    x = int(min(max(posicion[0], 3), max(3, ancho_imagen - ancho_texto - 3)))
+    y = int(min(max(posicion[1], alto_texto + 3), alto_imagen - 3))
+
+    cv2.putText(imagen, cadena, (x, y), FUENTE, escala, (0, 0, 0),
                 grosor + 2, cv2.LINE_AA)
-    cv2.putText(imagen, cadena, posicion, FUENTE, escala, color,
+    cv2.putText(imagen, cadena, (x, y), FUENTE, escala, color,
                 grosor, cv2.LINE_AA)
 
 
