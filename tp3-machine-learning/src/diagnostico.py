@@ -1,26 +1,16 @@
 """
 Diagnóstico: por qué la cámara no reconoce el marcador.
 
-Prueba todos los diccionarios Aruco que trae OpenCV sobre cada cuadro y
-reporta cuáles reconocen lo que le estés mostrando. Dibuja además, en
-rojo, los candidatos rechazados: los cuadriláteros que el detector
-encontró pero no pudo decodificar.
+Prueba todos los diccionarios Aruco sobre la cámara y muestra qué ve:
 
-Cómo leer lo que se ve:
-
-  contorno verde      el marcador se reconoce; el nombre del diccionario
-                      que aparece arriba es el que hay que pasarle a
-                      main.py con --diccionario
-  contorno rojo       se ve el cuadrado pero no se puede leer el código:
-                      diccionario equivocado, imagen movida o borrosa,
-                      marcador demasiado chico o demasiado oblicuo
-  nada                no se distingue ni el cuadrado: falta contraste,
-                      hay reflejo sobre el papel, o el marcador quedó sin
-                      margen blanco alrededor
+  contorno verde   lo reconoce; arriba dice con qué diccionario
+  contorno rojo    ve el cuadrado pero no puede leer el código: marcador
+                   movido, borroso, muy chico o muy inclinado
+  nada             no ve ni el cuadrado: poca luz, reflejo sobre el papel
+                   o falta margen blanco alrededor
 
 Teclas:
-    g     guarda el cuadro actual en captura_diagnostico.png, para poder
-          mirar con calma qué es lo que está viendo la cámara
+    g     guarda el frame actual en captura_diagnostico.png
     ESC   salir
 
 Ejemplo:
@@ -33,10 +23,9 @@ from pathlib import Path
 
 import cv2
 
-# Cada cuántos cuadros se barren todos los diccionarios. El barrido es
-# caro (son más de veinte detecciones), así que se hace de a ratos y el
-# resultado se conserva entre medio.
-CADA_CUANTOS_CUADROS = 5
+# Probar todos los diccionarios es lento, así que se hace cada 5 frames
+# y en el medio se sigue mostrando el último resultado.
+CADA_CUANTOS_FRAMES = 5
 
 VENTANA = "Diagnostico"
 TECLA_ESC = 27
@@ -44,13 +33,13 @@ ARCHIVO_CAPTURA = Path("captura_diagnostico.png")
 
 
 def nombres_de_diccionarios():
-    """Todos los diccionarios predefinidos de esta versión de OpenCV."""
+    """Los diccionarios Aruco de esta versión de OpenCV"""
     return sorted(nombre for nombre in dir(cv2.aruco)
-                  if nombre.startswith("DICT_"))
+                  if nombre.startswith("DICT_") and "APRILTAG" not in nombre)
 
 
 def crear_detectores():
-    """Un detector por diccionario predefinido."""
+    """Un detector por cada diccionario"""
     detectores = {}
     for nombre in nombres_de_diccionarios():
         diccionario = cv2.aruco.getPredefinedDictionary(
@@ -62,10 +51,10 @@ def crear_detectores():
 
 def barrer(frame, detectores):
     """
-    Prueba todos los diccionarios. Devuelve:
-      - hallazgos: {nombre del diccionario: [ids]} de los que reconocieron algo
-      - esquinas, rechazados: del primer diccionario que haya reconocido
-        algo, o del primero a secas si ninguno reconoció nada
+    Prueba todos los diccionarios sobre el frame. Devuelve:
+      - hallazgos: qué diccionarios reconocieron algo, y qué ids
+      - esquinas: los marcadores reconocidos (en verde)
+      - rechazados: los cuadrados que vio pero no pudo leer (en rojo)
     """
     hallazgos = {}
     esquinas_buenas = []
@@ -85,6 +74,7 @@ def barrer(frame, detectores):
 
 
 def texto(imagen, cadena, posicion, color, escala=0.5):
+    """Texto con borde negro, para que se lea sobre cualquier fondo"""
     cv2.putText(imagen, cadena, posicion, cv2.FONT_HERSHEY_SIMPLEX, escala,
                 (0, 0, 0), 3, cv2.LINE_AA)
     cv2.putText(imagen, cadena, posicion, cv2.FONT_HERSHEY_SIMPLEX, escala,
@@ -92,12 +82,15 @@ def texto(imagen, cadena, posicion, color, escala=0.5):
 
 
 def anotar(frame, hallazgos, esquinas, rechazados):
+    """Dibuja los contornos y el mensaje que corresponde a lo que vio"""
     anotado = frame.copy()
 
+    # Rojos: cuadrados que vio pero no pudo leer
     for candidato in rechazados:
         contorno = candidato.reshape(-1, 1, 2).astype(int)
         cv2.polylines(anotado, [contorno], True, (0, 0, 255), 2)
 
+    # Verdes: marcadores reconocidos
     for puntos in esquinas:
         contorno = puntos.reshape(-1, 1, 2).astype(int)
         cv2.polylines(anotado, [contorno], True, (0, 255, 0), 3)
@@ -122,32 +115,39 @@ def anotar(frame, hallazgos, esquinas, rechazados):
 
 
 def main(argumentos=None):
+    # 1. Lee las opciones: solo qué cámara usar
     parser = argparse.ArgumentParser(
         description="Prueba todos los diccionarios Aruco sobre la cámara.")
     parser.add_argument("--camara", type=int, default=0)
     args = parser.parse_args(argumentos)
 
+    # 2. Abre la cámara. Si no puede, termina
     camara = cv2.VideoCapture(args.camara)
     if not camara.isOpened():
         print(f"No se pudo abrir la cámara {args.camara}.")
         return 1
 
+    # 3. Crea un detector por diccionario
     detectores = crear_detectores()
     print(__doc__)
     print(f"Diccionarios a probar: {len(detectores)}")
 
     hallazgos, esquinas, rechazados = {}, [], []
-    cuadro = 0
+    numero_frame = 0
     ultimo_reporte = None
 
     try:
+        # Loop: una vuelta por cada frame de la cámara
         while True:
+            # 4. Lee un frame
             ok, frame = camara.read()
             if not ok:
-                print("La cámara dejó de entregar cuadros.")
+                print("La cámara dejó de entregar frames.")
                 break
 
-            if cuadro % CADA_CUANTOS_CUADROS == 0:
+            # 5. Cada 5 frames prueba todos los diccionarios, y avisa en la
+            #    terminal si cambió cuáles lo reconocen
+            if numero_frame % CADA_CUANTOS_FRAMES == 0:
                 hallazgos, esquinas, rechazados = barrer(frame, detectores)
 
                 reporte = tuple(sorted(hallazgos))
@@ -156,19 +156,21 @@ def main(argumentos=None):
                         nombre.replace("DICT_", "").lower()
                         for nombre in reporte))
                     ultimo_reporte = reporte
-            cuadro += 1
+            numero_frame += 1
 
+            # 6. Muestra el frame con los contornos y el mensaje
             cv2.imshow(VENTANA, anotar(frame, hallazgos, esquinas, rechazados))
 
+            # 7. Teclado: ESC sale; g guarda el frame sin dibujos, para
+            #    mirar con calma qué está viendo la cámara
             tecla = cv2.waitKey(1) & 0xFF
             if tecla == TECLA_ESC:
                 break
             if tecla in (ord("g"), ord("G")):
-                # El cuadro sin anotar: es el que hay que mirar para
-                # entender por qué el detector no encuentra nada.
                 cv2.imwrite(str(ARCHIVO_CAPTURA), frame)
-                print(f"Cuadro guardado en {ARCHIVO_CAPTURA.resolve()}")
+                print(f"Frame guardado en {ARCHIVO_CAPTURA.resolve()}")
     finally:
+        # 8. Pase lo que pase, libera la cámara y cierra la ventana
         camara.release()
         cv2.destroyAllWindows()
 

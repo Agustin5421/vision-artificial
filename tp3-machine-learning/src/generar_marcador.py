@@ -1,14 +1,12 @@
 """
-Utilidad: genera la imagen de un marcador Aruco para imprimir o mostrar
-en un monitor.
+Genera un marcador Aruco en PNG
 
-El tamaño de salida se calcula a partir del lado en mm y de los puntos
-por pulgada del dispositivo, para que el marcador impreso (o mostrado en
-pantalla, si se conoce el dpi del monitor) mida realmente el lado que
-después se le declara al sistema con --lado-mm.
+El tamaño en píxeles se calcula a partir del lado en mm y de los dpi del
+dispositivo, para que el marcador mida de verdad lo que después se le
+pasa a main.py con --lado-mm
 
-Ejemplo:
-    python src/generar_marcador.py --id 0 --lado-mm 100 --dpi 96
+Ej de uso:
+    python src/generar_marcador.py --id 0 --lado-mm 100
 """
 
 import argparse
@@ -42,6 +40,8 @@ def parsear_argumentos(argumentos=None):
 def main(argumentos=None):
     args = parsear_argumentos(argumentos)
 
+    # Los dpi dicen cuántos píxeles entran en una pulgada: con eso se calcula
+    # de cuántos píxeles tiene que ser la imagen para medir los mm pedidos.
     lado_px = max(1, int(round(args.lado_mm / MM_POR_PULGADA * args.dpi)))
     borde_px = max(0, int(round(args.borde_mm / MM_POR_PULGADA * args.dpi)))
 
@@ -49,9 +49,10 @@ def main(argumentos=None):
         DICCIONARIOS[args.diccionario])
     if hasattr(cv2.aruco, "generateImageMarker"):
         imagen = cv2.aruco.generateImageMarker(diccionario, args.id, lado_px)
-    else:  # OpenCV viejo
+    else:  # OpenCV anterior a 4.7
         imagen = cv2.aruco.drawMarker(diccionario, args.id, lado_px)
 
+    # Sin margen blanco alrededor, el detector no encuentra el marcador
     if borde_px:
         imagen = cv2.copyMakeBorder(imagen, borde_px, borde_px, borde_px,
                                     borde_px, cv2.BORDER_CONSTANT, value=255)

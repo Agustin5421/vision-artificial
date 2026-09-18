@@ -1,17 +1,12 @@
 """
-Registro del plano métrico.
+Registro del plano: lo que pasa al apretar r.
 
-El registro es instantáneo: se dispara con la tecla r y congela el
-sistema de referencia del mundo sobre el marcador Aruco que haya en ese
-momento en escena. De ahí salen las dos homografías que usa todo el
-resto del programa:
+Toma el marcador que haya en escena como regla y como origen del mundo,
+y calcula una sola vez lo que después usa el loop en cada frame:
 
-    H_img_mm   imagen (px) -> mundo (mm)      da el resultado buscado
-    H_img_vis  imagen (px) -> vista cenital   sirve para anotar
-
-y la imagen de fondo de la ventana W2D, que es la vista cenital del
-plano rectificada en ese instante. Esa rectificación se hace una sola
-vez, acá, y no en el bucle de cámara.
+    H_img_mm    imagen (px) -> mundo (mm)     para medir
+    H_img_vis   imagen (px) -> ventana W2D    para dibujar
+    fondo       foto cenital del plano, de fondo para W2D
 """
 
 from dataclasses import dataclass
@@ -22,25 +17,21 @@ import numpy as np
 
 @dataclass
 class Registro:
-    """Resultado del registro: el marco de referencia del mundo."""
+    """Todo lo que se calcula al apretar r"""
 
     H_img_mm: np.ndarray   # imagen -> mm
-    H_mm_vis: np.ndarray   # mm -> vista cenital
-    H_img_vis: np.ndarray  # imagen -> vista cenital (H_mm_vis @ H_img_mm)
-    fondo: np.ndarray      # vista cenital congelada en el momento del registro
-    id_referencia: int     # marcador que definió el sistema de referencia
-    lado_mm: float         # lado del marcador, la unidad métrica del registro
+    H_mm_vis: np.ndarray   # mm -> ventana W2D
+    H_img_vis: np.ndarray  # imagen -> ventana W2D
+    fondo: np.ndarray      # foto cenital tomada al registrar
+    id_referencia: int     # marcador que se usó como referencia
+    lado_mm: float         # lado real de ese marcador
 
 
 def esquinas_en_mm(lado_mm):
     """
-    Las cuatro esquinas del marcador de referencia expresadas en el
-    sistema del mundo: origen en el centro del marcador, x hacia la
-    derecha, y hacia arriba, en milímetros.
-
-    El orden es el que devuelve Aruco (superior izquierda, superior
-    derecha, inferior derecha, inferior izquierda), así que la
-    correspondencia con las esquinas de la imagen es directa.
+    Las 4 esquinas del marcador de referencia en mm, con el origen en su
+    centro, x hacia la derecha e y hacia arriba. Van en el mismo orden que
+    las de Aruco, así cada una se empareja con su esquina en la imagen.
     """
     mitad = lado_mm / 2.0
     return np.array([
@@ -53,12 +44,9 @@ def esquinas_en_mm(lado_mm):
 
 def matriz_mm_a_vista(ancho, alto, escala):
     """
-    Homografía (acá apenas una semejanza) de milímetros a píxeles de la
-    ventana W2D: el origen del mundo queda en el centro de la imagen, x
-    horizontal hacia la derecha e y vertical hacia arriba. El signo
-    negativo invierte el eje vertical, que en imagen crece hacia abajo.
-
-    escala está en píxeles por milímetro.
+    Pasa de mm a píxeles de la ventana W2D: el origen queda en el centro y
+    el eje y se invierte, porque en una imagen crece hacia abajo.
+    escala está en píxeles por mm.
     """
     return np.array([
         [escala, 0.0, ancho / 2.0],
@@ -68,38 +56,36 @@ def matriz_mm_a_vista(ancho, alto, escala):
 
 
 def elegir_marcador(ids):
-    """
-    Con varios marcadores en escena hay que elegir uno como referencia.
-    El criterio es el id más chico: cualquiera sirve, pero éste es
-    reproducible entre corridas.
-    """
+    """Con varios marcadores, usa el de id más chico: así siempre es el mismo."""
     return int(np.argmin(ids))
 
 
 def registrar_plano(frame, esquinas, ids, lado_mm, ancho_vista, alto_vista,
                     escala):
-    """
-    Calcula el registro a partir del frame actual.
-
-    Devuelve None si no hay ningún marcador detectado: sin marcador no
-    hay sistema de referencia posible y el registro no se lleva a cabo.
-    """
+    """Calcula el registro con el frame actual, o devuelve None si no hay marcadores."""
+    # 1. Sin marcador no hay referencia: el registro se cancela
     if not ids:
         return None
 
+    # 2. Elige el marcador de referencia.
     indice = elegir_marcador(ids)
+
+    # 3. Arma 4 parejas de puntos: cada esquina en la imagen (px) y la
+    #    misma esquina en el mundo (mm).
     esquinas_img = esquinas[indice].astype(np.float32)
     destino_mm = esquinas_en_mm(lado_mm)
 
-    # Cuatro puntos exactos: getPerspectiveTransform resuelve el sistema
-    # sin ajuste por mínimos cuadrados, que acá no aportaría nada.
+    # 4. Con esas 4 parejas, OpenCV calcula la homografía imagen -> mm.
     H_img_mm = cv2.getPerspectiveTransform(esquinas_img, destino_mm)
 
+    # 5. Homografía imagen -> ventana W2D: primero a mm, después a píxeles de la ventana
     H_mm_vis = matriz_mm_a_vista(ancho_vista, alto_vista, escala)
     H_img_vis = H_mm_vis @ H_img_mm
 
+    # 6. Foto cenital
     fondo = cv2.warpPerspective(frame, H_img_vis, (ancho_vista, alto_vista))
 
+    # 7. Devuelve todo y main.py lo guarda en la variable registro
     return Registro(
         H_img_mm=H_img_mm,
         H_mm_vis=H_mm_vis,

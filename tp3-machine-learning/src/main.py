@@ -1,19 +1,14 @@
 """
-Localización homográfica en tiempo real.
+Localización homográfica en tiempo real
 
-Una cámara fija observa en perspectiva un plano (un escritorio, la
-pantalla de un monitor) sobre el que se desplaza un marcador Aruco. El
-sistema determina y muestra en tiempo real la pose 2D del marcador
-(coordenadas en mm y orientación) en el sistema de referencia métrico
-registrado.
+Una cámara fija mira en perspectiva un plano sobre el que se mueve un
+marcador Aruco, y el programa muestra en vivo su pose 2D (posición en mm
+y orientación) respecto del plano registrado con r.
+Con esc se sale del programa.
 
 Ventanas:
-    Cam   feed de la cámara con los marcadores detectados anotados
-    W2D   vista cenital del mundo 2D con la pose de cada marcador
-
-Teclas:
-    r     registro del plano métrico (usa el marcador que haya en escena)
-    ESC   salir
+    Cam   video de la cámara con los marcadores detectados
+    W2D   vista cenital del plano con la pose de cada marcador
 
 Ejemplo:
     python src/main.py --camara 0 --lado-mm 100 --diccionario 4x4_50
@@ -21,9 +16,7 @@ Ejemplo:
 
 import argparse
 import sys
-
 import cv2
-
 from deteccion import (AUTOMATICO, DICCIONARIOS, Detector,
                        dibujar_detecciones)
 from localizacion import localizar
@@ -48,7 +41,7 @@ def parsear_argumentos(argumentos=None):
                         metavar="NOMBRE",
                         help="diccionario Aruco (default: auto, lo busca "
                              "solo). Nombres cortos: 4x4_50, 6x6_250, "
-                             "apriltag_36h11, aruco_original, ...")
+                             "aruco_original, ...")
     parser.add_argument("--ancho-w2d", type=int, default=720,
                         help="ancho en px de la ventana W2D (default: 720)")
     parser.add_argument("--alto-w2d", type=int, default=720,
@@ -59,31 +52,37 @@ def parsear_argumentos(argumentos=None):
 
 
 def main(argumentos=None):
+    # 1. Lee las opciones de la línea de comandos, como --lado-mm
     args = parsear_argumentos(argumentos)
 
+    # 2. Intenta abrir la cámara
     camara = cv2.VideoCapture(args.camara)
     if not camara.isOpened():
         print(f"No se pudo abrir la cámara {args.camara}.")
         return 1
 
+    # 3. Crea el detector de marcadores (deteccion.py)
     detector = Detector(args.diccionario)
     ultimo_diccionario = detector.nombre
+
+    # 4. Todavía no hay sistema de referencia, se crea al apretar r
     registro = None
 
     print(__doc__)
 
     try:
+        # Loop: una vuelta por cada frame de la cámara
         while True:
+            # 5. Lee un frame
             ok, frame = camara.read()
             if not ok:
-                print("La cámara dejó de entregar cuadros.")
+                print("La cámara dejó de entregar frames.")
                 break
 
+            # 6. Busca los marcadores: sus cuatro esquinas y su id
             esquinas, ids = detector.detectar(frame)
 
-            # El recordatorio va sobre la ventana Cam y no sólo en la
-            # consola porque la tecla r la recibe la ventana, no la
-            # terminal: hay que tener el foco acá para que funcione.
+            # 7. Ventana Cam: el video con los contornos verdes y una ayuda abajo
             cam = dibujar_detecciones(frame, esquinas, ids)
             if detector.nombre != ultimo_diccionario:
                 ultimo_diccionario = detector.nombre
@@ -106,9 +105,9 @@ def main(argumentos=None):
             texto(cam, ayuda, (10, cam.shape[0] - 12), color, 0.55)
             cv2.imshow(VENTANA_CAM, cam)
 
-            # La ventana W2D no se puede actualizar sin homografías; con
-            # homografías pero sin marcadores se dibuja igual, porque el
-            # fondo y los ejes ya están determinados.
+            # 8. Ventana W2D: sólo muestra la instrucción; con
+            #    registro calcula la pose de cada marcador (localizacion.py)
+            #    y la dibuja en la vista cenital (vista_cenital.py)
             if registro is None:
                 w2d = lienzo_sin_registro(args.ancho_w2d, args.alto_w2d)
             else:
@@ -116,12 +115,12 @@ def main(argumentos=None):
                 w2d = dibujar_w2d(registro, poses)
             cv2.imshow(VENTANA_W2D, w2d)
 
+            # 9. Teclado: ESC sale; r registra el plano (registro.py) con
+                # el frame crudo, para que el fondo de W2D no lleve los dibujos de Cam
             tecla = cv2.waitKey(1) & 0xFF
             if tecla == TECLA_ESC:
                 break
             if tecla in (ord("r"), ord("R")):
-                # Se registra sobre el frame sin anotar: el fondo cenital
-                # no debe llevar encima los dibujos de la ventana Cam.
                 nuevo = registrar_plano(frame, esquinas, ids, args.lado_mm,
                                         args.ancho_w2d, args.alto_w2d,
                                         args.escala)
@@ -133,6 +132,7 @@ def main(argumentos=None):
                           f"id={registro.id_referencia} "
                           f"({registro.lado_mm:.0f} mm de lado).")
     finally:
+        # 10. Al salir del loop (no importa la razon), libera la cámara y cierra las ventanas
         camara.release()
         cv2.destroyAllWindows()
 

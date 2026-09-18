@@ -61,7 +61,7 @@ sola vez, acá, y **no** en el bucle de cámara.
 
 ### Localización
 
-Corre en bucle, en tiempo real, y actualiza las dos ventanas en cada cuadro.
+Corre en bucle, en tiempo real, y actualiza las dos ventanas en cada frame.
 Para cada marcador detectado se transportan sus cuatro esquinas al mundo con
 `H_img_mm`, y de ahí salen:
 
@@ -115,7 +115,7 @@ python src/main.py --lado-mm 100
 |-----------------|----------|----------|
 | `--camara`      | `0`      | índice de la cámara |
 | `--lado-mm`     | `100`    | lado real del marcador, en mm |
-| `--diccionario` | `auto`   | diccionario Aruco. Por defecto lo busca solo; si se quiere fijar, va el nombre corto (`4x4_50`, `6x6_250`, `apriltag_36h11`, `aruco_original`, ...) |
+| `--diccionario` | `auto`   | diccionario Aruco. Por defecto lo busca solo; si se quiere fijar, va el nombre corto (`4x4_50`, `6x6_250`, `aruco_original`, ...) |
 | `--ancho-w2d`   | `720`    | ancho de la ventana W2D, en px |
 | `--alto-w2d`    | `720`    | alto de la ventana W2D, en px |
 | `--escala`      | `1.2`    | píxeles por mm en la ventana W2D |
@@ -126,12 +126,12 @@ ventana cubre ±300 mm alrededor del origen. Bajarla es alejarse.
 ## El diccionario del marcador
 
 Un marcador sólo se detecta con el diccionario al que pertenece, y los marcadores
-que uno se baja de internet casi nunca son del que uno supone: pueden ser Aruco
-de 4x4, de 6x6, `aruco_original`, o directamente AprilTags.
+que uno se baja de internet casi nunca son del que uno supone: pueden ser de
+4x4, de 6x6, `aruco_original`, etc.
 
 Por eso el default de `--diccionario` es `auto`: el detector prueba todos los
-diccionarios que trae OpenCV hasta que alguno reconozca un marcador, y a partir
-de ahí se queda con ése. La búsqueda cuesta más de veinte detecciones por cuadro,
+diccionarios Aruco que trae OpenCV hasta que alguno reconozca un marcador, y a
+partir de ahí se queda con ése. La búsqueda cuesta dieciocho detecciones por frame,
 así que sólo se paga hasta encontrarlo; el nombre encontrado aparece abajo en la
 ventana `Cam` y en la terminal, y se le puede pasar después con `--diccionario`
 para saltear la búsqueda.
@@ -140,8 +140,8 @@ Un mismo marcador suele dar positivo en varios diccionarios emparentados (4x4_50
 está contenido en 4x4_100, y así). Cualquiera de ellos sirve: la geometría de las
 esquinas, que es lo único que usa la localización, es la misma.
 
-El diccionario fijado no es definitivo: si pasan 15 cuadros seguidos sin detectar
-nada, se vuelve a barrer. Sin eso, un falso positivo sobre un cuadro de ruido
+El diccionario fijado no es definitivo: si pasan 15 frames seguidos sin detectar
+nada, se vuelve a barrer. Sin eso, un falso positivo sobre un frame con ruido
 dejaría al detector fijado en un diccionario equivocado y no encontraría el
 marcador nunca más.
 
@@ -153,7 +153,7 @@ Cuando en la ventana `Cam` no aparece ningún contorno verde:
 python src/diagnostico.py
 ```
 
-Prueba todos los diccionarios de OpenCV sobre cada cuadro y reporta todos los que
+Prueba todos los diccionarios de OpenCV sobre cada frame y reporta todos los que
 reconocen al marcador, no sólo el primero. Dibuja en rojo los candidatos rechazados, los cuadriláteros que encontró
 pero no pudo decodificar, y con eso se distinguen los tres casos:
 
