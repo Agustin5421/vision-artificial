@@ -1,0 +1,29 @@
+Test: 17 pacientes, 589 cortes (230 con tumor, 359 sin tumor)
+
+Dice medio por corte, todos los cortes:     0.792
+Dice medio por corte, cortes con tumor:     0.662
+IoU medio por corte, cortes con tumor:      0.573
+Dice volumétrico medio por paciente:        0.761
+
+Detección (¿hay tumor en el corte?)
+  cortes con tumor detectados:   204/230 (89%)
+  falsos positivos en cortes sin tumor: 45/359 (13%)
+
+Dice por paciente:
+  TCGA_FG_A60K  0.115
+  TCGA_HT_A5RC  0.474
+  TCGA_CS_6668  0.633
+  TCGA_CS_6665  0.669
+  TCGA_DU_A5TP  0.697
+  TCGA_DU_6404  0.760
+  TCGA_HT_7616  0.776
+  TCGA_CS_5393  0.800
+  TCGA_HT_7692  0.843
+  TCGA_HT_8107  0.866
+  TCGA_CS_4944  0.876
+  TCGA_HT_7879  0.882
+  TCGA_DU_5851  0.886
+  TCGA_DU_7014  0.894
+  TCGA_FG_7634  0.916
+  TCGA_CS_6667  0.922
+  TCGA_DU_6408  0.932
