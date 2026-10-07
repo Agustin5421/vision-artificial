@@ -10,3 +10,13 @@ entrenamiento: 77 pacientes, 2719 cortes, 934 con tumor (34%)
 época   8  pérdida 0.3383 / 0.6314  Dice 0.725 / 0.798  (29s)
 época   9  pérdida 0.3275 / 0.6038  Dice 0.731 / 0.795  (29s)
 época  10  pérdida 0.3106 / 0.6234  Dice 0.739 / 0.763  (29s)
+época  11  pérdida 0.2973 / 0.5861  Dice 0.749 / 0.813  (29s)
+época  12  pérdida 0.2870 / 0.5975  Dice 0.759 / 0.812  (29s)
+época  13  pérdida 0.2826 / 0.5828  Dice 0.770 / 0.819  (29s)  * mejor
+época  14  pérdida 0.2784 / 0.5708  Dice 0.771 / 0.827  (29s)  * mejor
+época  15  pérdida 0.2605 / 0.5563  Dice 0.780 / 0.808  (29s)
+época  16  pérdida 0.2633 / 0.5445  Dice 0.782 / 0.836  (29s)  * mejor
+época  17  pérdida 0.2641 / 0.5594  Dice 0.781 / 0.835  (29s)
+época  18  pérdida 0.2636 / 0.5603  Dice 0.789 / 0.824  (30s)
+época  19  pérdida 0.2575 / 0.5527  Dice 0.787 / 0.831  (29s)
+época  20  pérdida 0.2578 / 0.5556  Dice 0.789 / 0.830  (30s)

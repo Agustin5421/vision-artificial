@@ -197,6 +197,40 @@ negativo.
 
 _(se completa al terminar el entrenamiento)_
 
+## Qué falta hacer
+
+**Para cerrar el TP (obligatorio según la consigna):**
+
+- [ ] Terminar el entrenamiento de 40 épocas y revisar `resultados/curvas.png`:
+      ver si hay sobreajuste (pérdida de validación que sube mientras la de
+      entrenamiento baja).
+- [ ] Correr `src/evaluar.py` y completar la sección **7. Resultados** con las
+      métricas de `resultados/metricas_test.txt`.
+- [ ] Mirar las figuras `predicciones_mejores.png`, `predicciones_peores.png` y
+      `predicciones_azar.png`, y comparar a ojo predicción vs. máscara real.
+- [ ] Escribir la **discusión crítica**: dónde falla el modelo y por qué.
+      Posibles causas para analizar:
+  - tumores muy chicos o cortes del borde del tumor (pocos píxeles, Dice muy
+    sensible),
+  - falsos positivos en zonas brillantes en FLAIR que no son tumor,
+  - pacientes con secuencias faltantes (el canal se reemplazó por FLAIR),
+  - bordes difusos: la propia máscara manual es discutible,
+  - el modelo trabaja corte por corte y no usa la información 3D de los cortes
+    vecinos.
+- [ ] Armar la entrega (informe o presentación) con las figuras de
+      `resultados/`.
+
+**Mejoras opcionales, si sobra tiempo:**
+
+- [ ] Ajustar el umbral de 0,5 sobre validación y ver cómo cambian el Dice y los
+      falsos positivos.
+- [ ] Comparar con una U-Net con encoder preentrenado (por ejemplo ResNet34 con
+      `segmentation_models_pytorch`).
+- [ ] Probar a 128 px (`--tamano 128`) y comparar calidad vs. velocidad.
+- [ ] Post-procesamiento: borrar componentes conexas muy chicas de la
+      predicción para reducir falsos positivos.
+- [ ] Entrenar sin data augmentation y comparar, para mostrar su efecto.
+
 ## Archivos
 
 ```
