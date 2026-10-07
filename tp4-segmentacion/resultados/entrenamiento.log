@@ -1,0 +1,12 @@
+Dispositivo: cuda
+entrenamiento: 77 pacientes, 2719 cortes, 934 con tumor (34%)
+época   1  pérdida 1.2160 / 0.9884  Dice 0.270 / 0.758  (72s)  * mejor
+época   2  pérdida 0.7514 / 0.7283  Dice 0.609 / 0.735  (38s)
+época   3  pérdida 0.4443 / 0.7489  Dice 0.663 / 0.615  (39s)
+época   4  pérdida 0.3683 / 0.6137  Dice 0.697 / 0.804  (49s)  * mejor
+época   5  pérdida 0.3635 / 0.6091  Dice 0.695 / 0.796  (29s)
+época   6  pérdida 0.3366 / 0.5979  Dice 0.718 / 0.814  (29s)  * mejor
+época   7  pérdida 0.3405 / 0.5922  Dice 0.716 / 0.817  (29s)  * mejor
+época   8  pérdida 0.3383 / 0.6314  Dice 0.725 / 0.798  (29s)
+época   9  pérdida 0.3275 / 0.6038  Dice 0.731 / 0.795  (29s)
+época  10  pérdida 0.3106 / 0.6234  Dice 0.739 / 0.763  (29s)
